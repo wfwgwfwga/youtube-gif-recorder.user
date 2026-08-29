@@ -2376,9 +2376,11 @@ if (
 
                     'if(estimated>=768*1024*1024){' +
 
-                    'alert("현재 WebP 설정은 너무 무겁습니다.\\n\\n예상 메모리 사용량: "+formatBytes(estimated)+"\\n\\nFPS, 가로 크기 또는 구간을 줄인 뒤 다시 시도해주세요.");' +
+                    'if(!confirm("현재 WebP 설정은 매우 무겁습니다.\\n\\n예상 메모리 사용량: "+formatBytes(estimated)+"\\n\\n변환이 실패하거나 브라우저가 느려질 수 있습니다.\\n그래도 진행하시겠습니까?")){' +
 
                     'return;' +
+
+                    '}' +
 
                     '}' +
 
