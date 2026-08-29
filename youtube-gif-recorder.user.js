@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube 화면 녹화 + 스크린샷 + 움짤(GIF/WebP) 버튼
 // @namespace    http://tampermonkey.net/
-// @version      1.9
+// @version      1.0
 // @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8)
 // @match        https://www.youtube.com/*
 // @grant        GM_openInTab
