@@ -733,6 +733,160 @@ if (
 
 
     // ===========================================================
+    // 파일명 관련
+    // ===========================================================
+
+    function getYouTubeVideoTitle() {
+
+        let title = '';
+
+
+        // 플레이어 제목 우선
+        const playerTitle =
+            document.querySelector(
+                '.ytp-title-link'
+            );
+
+
+        if (
+            playerTitle &&
+            playerTitle.textContent.trim()
+        ) {
+
+            title =
+                playerTitle.textContent.trim();
+        }
+
+
+        // 플레이어 제목을 못 찾으면 document.title 사용
+        if (!title) {
+
+            title =
+                document.title
+                    .replace(
+                        /\s*-\s*YouTube\s*$/i,
+                        ''
+                    )
+                    .trim();
+        }
+
+
+        if (!title) {
+            title = 'YouTube';
+        }
+
+
+        /*
+         * Windows 파일명에서 사용할 수 없는 문자 제거
+         *
+         * < > : " / \ | ? *
+         * 제어문자도 제거
+         */
+        title =
+            title.replace(
+                /[<>:"/\\|?*\x00-\x1F]/g,
+                ''
+            );
+
+
+        /*
+         * 파일명 앞뒤 공백 제거
+         * Windows에서 문제가 될 수 있는 끝의 점 제거
+         */
+        title =
+            title
+                .replace(
+                    /^\s+|\s+$/g,
+                    ''
+                )
+                .replace(
+                    /\.+$/g,
+                    ''
+                )
+                .trim();
+
+
+        if (!title) {
+            title = 'YouTube';
+        }
+
+
+        /*
+         * Windows 예약 파일명 방지
+         */
+        if (
+            /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(title)
+        ) {
+
+            title =
+                '_' + title;
+        }
+
+
+        return title;
+    }
+
+
+    function getFileTimestamp() {
+
+        const now =
+            new Date();
+
+
+        const pad =
+            (n, length = 2) =>
+                String(n).padStart(
+                    length,
+                    '0'
+                );
+
+
+        return (
+            now.getFullYear() +
+            '-' +
+            pad(now.getMonth() + 1) +
+            '-' +
+            pad(now.getDate()) +
+            '_' +
+            pad(now.getHours()) +
+            '-' +
+            pad(now.getMinutes()) +
+            '-' +
+            pad(now.getSeconds()) +
+            '-' +
+            pad(now.getMilliseconds(), 3)
+        );
+    }
+
+
+    function makeVideoFileName(
+        type,
+        extension,
+        title = null
+    ) {
+
+        const videoTitle =
+            title ||
+            getYouTubeVideoTitle();
+
+
+        const timestamp =
+            getFileTimestamp();
+
+
+        return (
+            videoTitle +
+            '_' +
+            type +
+            '_' +
+            timestamp +
+            '.' +
+            extension
+        );
+    }
+
+
+    // ===========================================================
     // F9 녹화
     // ===========================================================
 
@@ -751,6 +905,9 @@ if (
     let isGifRecording = false;
     let gifCaptureStream = null;
     let gifRecordingBlob = null;
+
+    // 녹화 시작 당시 영상 제목 저장
+    let gifVideoTitle = '';
 
 
     // ===========================================================
@@ -1047,18 +1204,12 @@ if (
                 }
 
 
-                const ts =
-                    new Date()
-                        .toISOString()
-                        .replace(
-                            /[:.]/g,
-                            '-'
-                        );
-
-
                 downloadBlob(
                     blob,
-                    `youtube-screenshot-${ts}.png`
+                    makeVideoFileName(
+                        '스크린샷',
+                        'png'
+                    )
                 );
 
             },
@@ -1146,6 +1297,14 @@ if (
         recordedChunks = [];
 
 
+        /*
+         * 일반 녹화도 녹화 시작 시점의 제목을 기억한다.
+         * 녹화 도중 페이지 제목이 바뀌어도 파일명은 동일하게 유지.
+         */
+        const recordingVideoTitle =
+            getYouTubeVideoTitle();
+
+
         mediaRecorder =
             new MediaRecorder(
                 captureStream,
@@ -1189,18 +1348,13 @@ if (
                     );
 
 
-                const ts =
-                    new Date()
-                        .toISOString()
-                        .replace(
-                            /[:.]/g,
-                            '-'
-                        );
-
-
                 downloadBlob(
                     blob,
-                    `youtube-recording-${ts}.${ext}`
+                    makeVideoFileName(
+                        '녹화',
+                        ext,
+                        recordingVideoTitle
+                    )
                 );
 
 
@@ -1277,6 +1431,14 @@ if (
 
             return;
         }
+
+
+        /*
+         * 움짤 녹화 시작 순간의 제목을 저장.
+         * 편집창을 나중에 저장해도 당시 제목을 사용한다.
+         */
+        gifVideoTitle =
+            getYouTubeVideoTitle();
 
 
         if (
@@ -1380,7 +1542,8 @@ if (
 
 
                 openGifEditorInNewTab(
-                    gifRecordingBlob
+                    gifRecordingBlob,
+                    gifVideoTitle
                 );
 
             };
@@ -1446,16 +1609,6 @@ if (
         totalFrames
     ) {
 
-        /*
-         * 한 프레임의 RGBA 데이터:
-         *
-         * width × height × 4 bytes
-         *
-         * wasm-webp에 넘기기 전에
-         * 모든 프레임을 JS 배열에 보관하기 때문에
-         * 실제 사용량은 이보다 훨씬 커질 수 있다.
-         */
-
         const bytesPerFrame =
             width *
             height *
@@ -1466,12 +1619,6 @@ if (
             bytesPerFrame *
             totalFrames;
 
-
-        /*
-         * 배열/Uint8Array/wasm 복사 등의
-         * 추가 메모리를 고려해서
-         * 약 1.5배를 안전 예상치로 사용.
-         */
 
         const estimatedBytes =
             rawBytes * 1.5;
@@ -1537,7 +1684,8 @@ if (
     // ===========================================================
 
     function openGifEditorInNewTab(
-        blob
+        blob,
+        videoTitle
     ) {
 
         const reader =
@@ -1549,6 +1697,10 @@ if (
 
                 const dataUrl =
                     reader.result;
+
+
+                const safeVideoTitle =
+                    videoTitle || 'YouTube';
 
 
                 const html =
@@ -1711,13 +1863,6 @@ if (
                     '"> ' +
 
 
-                    /*
-                     * 화질 옵션을 span으로 감싼다.
-                     *
-                     * WebP + 무손실이면
-                     * 이 span 전체를 숨긴다.
-                     */
-
                     '<span id="qualityWrap">' +
 
                     '화질 ' +
@@ -1808,15 +1953,51 @@ if (
 
                     '<script>' +
 
-
                     'const v=document.getElementById("v");' +
-
 
                     'v.src=' +
 
                     JSON.stringify(dataUrl) +
 
                     ';' +
+
+                    'const videoTitle=' +
+
+                    JSON.stringify(safeVideoTitle) +
+
+                    ';' +
+
+
+                    // ------------------------------------------------
+                    // 파일명
+                    // ------------------------------------------------
+
+                    'function getFileTimestamp(){' +
+
+                    'const now=new Date();' +
+
+                    'const pad=(n,length=2)=>String(n).padStart(length,"0");' +
+
+                    'return now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+"_"+pad(now.getHours())+"-"+pad(now.getMinutes())+"-"+pad(now.getSeconds())+"-"+pad(now.getMilliseconds(),3);' +
+
+                    '}' +
+
+
+                    'function makeFileName(type,extension){' +
+
+                    'let title=videoTitle||"YouTube";' +
+
+                    'title=title.replace(/[<>:"/\\\\|?*\\x00-\\x1F]/g,"");' +
+
+                    'title=title.replace(/^\\s+|\\s+$/g,"").replace(/\\.+$/g,"").trim();' +
+
+                    'if(!title)title="YouTube";' +
+
+                    'if(/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(title))title="_"+title;' +
+
+                    'return title+"_"+type+"_"+getFileTimestamp()+"."+extension;' +
+
+                    '}' +
 
 
                     'let dur=0;' +
@@ -1901,23 +2082,9 @@ if (
 
                     'const isLossless=webpCompression.value==="lossless";' +
 
-
                     'webpCompressionWrap.style.display=isWebp?"inline":"none";' +
 
-
-                    /*
-                     * GIF:
-                     *     화질 표시
-                     *
-                     * WebP 손실:
-                     *     화질 표시
-                     *
-                     * WebP 무손실:
-                     *     화질 숨김
-                     */
-
                     'qualityWrap.style.display=(!isWebp||!isLossless)?"inline":"none";' +
-
 
                     'updateMemoryWarning();' +
 
@@ -1934,7 +2101,6 @@ if (
                     // ------------------------------------------------
 
                     'document.getElementById("setS").onclick=()=>document.getElementById("s").value=v.currentTime.toFixed(1);' +
-
 
                     'document.getElementById("setE").onclick=()=>document.getElementById("e").value=v.currentTime.toFixed(1);' +
 
@@ -2030,12 +2196,6 @@ if (
 
                     'const estimated=rawBytes*1.5;' +
 
-
-                    /*
-                     * 512MB 이상이면 경고.
-                     * 실제로는 브라우저/wasm 환경에 따라
-                     * 더 낮은 곳에서도 문제가 생길 수 있다.
-                     */
 
                     'if(estimated>=512*1024*1024){' +
 
@@ -2194,9 +2354,9 @@ if (
                     'if(isNaN(quality)||quality<1){alert("화질 값을 올바르게 입력해주세요.");return;}' +
 
 
-                    /*
-                     * WebP 메모리 사전 검사
-                     */
+                    // ------------------------------------------------
+                    // WebP 메모리 사전 검사
+                    // ------------------------------------------------
 
                     'if(format==="webp"){' +
 
@@ -2290,13 +2450,6 @@ if (
                     'const frames=[];' +
 
 
-                    /*
-                     * 손실 WebP에서만 quality를 계산한다.
-                     *
-                     * 무손실 WebP에서는 quality 값을
-                     * 사용하지 않는다.
-                     */
-
                     'const webpQuality=Math.max(10,Math.min(100,Math.round(100-((quality-1)/19)*90)));' +
 
 
@@ -2308,10 +2461,6 @@ if (
 
                     'ctx.drawImage(v,0,0,outW,outH);' +
 
-
-                    /*
-                     * getImageData 결과를 즉시 Uint8Array로 복사.
-                     */
 
                     'const imageData=ctx.getImageData(0,0,outW,outH);' +
 
@@ -2333,10 +2482,6 @@ if (
                     '};' +
 
 
-                    /*
-                     * 손실 WebP일 때만 quality 추가
-                     */
-
                     'if(!webpLossless){' +
 
                     'frame.config.quality=webpQuality;' +
@@ -2354,11 +2499,6 @@ if (
 
                     '}' +
 
-
-                    /*
-                     * Canvas를 더 이상 사용하지 않는다는 의미로
-                     * 내부 참조를 정리할 수 있게 한다.
-                     */
 
                     'document.getElementById("lbl").textContent=webpLossless?"WebP 무손실 인코딩 중...":"WebP 인코딩 중...";' +
 
@@ -2396,9 +2536,10 @@ if (
 
                     'const a=document.createElement("a");' +
 
+
                     'a.href=webpUrl;' +
 
-                    'a.download="youtube-gif-"+Date.now()+".webp";' +
+                    'a.download=makeFileName("움짤","webp");' +
 
 
                     'document.body.appendChild(a);' +
@@ -2410,10 +2551,6 @@ if (
 
                     'setTimeout(()=>URL.revokeObjectURL(webpUrl),10000);' +
 
-
-                    /*
-                     * 큰 프레임 배열을 가능한 빨리 해제.
-                     */
 
                     'frames.length=0;' +
 
@@ -2496,9 +2633,7 @@ if (
 
                     'document.getElementById("lbl").textContent="GIF 인코딩 중... "+Math.round(r*100)+"%";' +
 
-
                     'document.getElementById("fill").style.width=(50+Math.round(r*50))+"%";' +
-
 
                     '});' +
 
@@ -2513,7 +2648,7 @@ if (
 
                     'a.href=url;' +
 
-                    'a.download="youtube-gif-"+Date.now()+".gif";' +
+                    'a.download=makeFileName("움짤","gif");' +
 
 
                     'document.body.appendChild(a);' +
@@ -2533,7 +2668,6 @@ if (
 
 
                     'document.getElementById("save").disabled=false;' +
-
 
                     '});' +
 
@@ -2560,12 +2694,9 @@ if (
 
                     'console.error("움짤 변환 오류:",err);' +
 
-
                     'alert("변환 실패: "+(err&&err.message?err.message:err));' +
 
-
                     'document.getElementById("save").disabled=false;' +
-
 
                     'document.getElementById("lbl").textContent="변환 실패";' +
 
@@ -2575,10 +2706,6 @@ if (
 
                     '};' +
 
-
-                    /*
-                     * 초기 UI 상태 반영
-                     */
 
                     'updateFormatUI();' +
 
