@@ -9,6 +9,7 @@
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
+// @noframes
 // @updateURL     https://raw.githubusercontent.com/wfwgwfwga/youtube-gif-recorder.user/main/youtube-gif-recorder.user.js
 // @downloadURL   https://raw.githubusercontent.com/wfwgwfwga/youtube-gif-recorder.user/main/youtube-gif-recorder.user.js
 // ==/UserScript==
