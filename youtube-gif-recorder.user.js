@@ -299,7 +299,7 @@ function openSettingsPanel() {
                 id="yt-gif-setting-quality"
                 type="number"
                 min="1"
-                max="30"
+                max="20"
                 step="1"
                 value="${gifSettings.quality}"
                 style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
@@ -451,6 +451,15 @@ function openSettingsPanel() {
             'click',
             () => {
 
+                if (
+                    inputEl.dataset.capturing === '1'
+                ) {
+                    return;
+                }
+
+                inputEl.dataset.capturing =
+                    '1';
+
                 const original =
                     inputEl.value;
 
@@ -482,6 +491,10 @@ function openSettingsPanel() {
 
                     inputEl.style.color =
                         '#fff';
+
+
+                    inputEl.dataset.capturing =
+                        '';
 
 
                     document.removeEventListener(
@@ -634,11 +647,12 @@ function openSettingsPanel() {
 
                 if (
                     isNaN(quality) ||
-                    quality < 1
+                    quality < 1 ||
+                    quality > 20
                 ) {
 
                     alert(
-                        '화질 값을 올바르게 입력해주세요.'
+                        '화질 값은 1~20 사이로 입력해주세요.'
                     );
 
                     return;
@@ -656,6 +670,20 @@ function openSettingsPanel() {
 
                     alert(
                         '단축키를 모두 설정해주세요.'
+                    );
+
+                    return;
+                }
+
+
+                if (
+                    keyRecord === keyScreenshot ||
+                    keyRecord === keyGif ||
+                    keyScreenshot === keyGif
+                ) {
+
+                    alert(
+                        '단축키는 서로 겹치지 않게 설정해주세요.'
                     );
 
                     return;
@@ -912,110 +940,6 @@ if (
 
 
     // ===========================================================
-    // GIF 워커
-    // ===========================================================
-
-    const GIF_WORKER_URL =
-        'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js';
-
-
-    let gifWorkerBlobUrlPromise =
-        null;
-
-
-    function getGifWorkerBlobUrl() {
-
-        if (
-            gifWorkerBlobUrlPromise
-        ) {
-            return gifWorkerBlobUrlPromise;
-        }
-
-
-        gifWorkerBlobUrlPromise =
-            new Promise(
-                (resolve, reject) => {
-
-                    if (
-                        typeof GM_xmlhttpRequest !==
-                        'function'
-                    ) {
-
-                        reject(
-                            new Error(
-                                'GM_xmlhttpRequest를 사용할 수 없습니다.'
-                            )
-                        );
-
-                        return;
-                    }
-
-
-                    GM_xmlhttpRequest({
-
-                        method: 'GET',
-
-                        url:
-                            GIF_WORKER_URL,
-
-
-                        onload:
-                            function (res) {
-
-                                try {
-
-                                    const blob =
-                                        new Blob(
-                                            [
-                                                res.responseText
-                                            ],
-                                            {
-                                                type:
-                                                    'application/javascript'
-                                            }
-                                        );
-
-
-                                    const blobUrl =
-                                        URL.createObjectURL(
-                                            blob
-                                        );
-
-
-                                    resolve(
-                                        ttPolicy.createScriptURL(
-                                            blobUrl
-                                        )
-                                    );
-
-
-                                } catch (err) {
-
-                                    reject(err);
-
-                                }
-
-                            },
-
-
-                        onerror:
-                            function (err) {
-
-                                reject(err);
-
-                            }
-
-                    });
-
-                }
-            );
-
-
-        return gifWorkerBlobUrlPromise;
-    }
-
-
-    // ===========================================================
     // Video 찾기
     // ===========================================================
 
@@ -1183,13 +1107,25 @@ if (
             );
 
 
-        ctx.drawImage(
-            video,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+        try {
+
+            ctx.drawImage(
+                video,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+        } catch (err) {
+
+            alert(
+                '스크린샷 캡처에 실패했습니다: ' +
+                err.message
+            );
+
+            return;
+        }
 
 
         canvas.toBlob(
@@ -1601,86 +1537,6 @@ if (
 
 
     // ===========================================================
-    // WebP 메모리 계산
-    // ===========================================================
-
-    function calculateWebpMemory(
-        width,
-        height,
-        totalFrames
-    ) {
-
-        const bytesPerFrame =
-            width *
-            height *
-            4;
-
-
-        const rawBytes =
-            bytesPerFrame *
-            totalFrames;
-
-
-        const estimatedBytes =
-            rawBytes * 1.5;
-
-
-        return {
-            rawBytes,
-            estimatedBytes
-        };
-    }
-
-
-    function formatBytes(bytes) {
-
-        if (
-            bytes < 1024
-        ) {
-
-            return (
-                bytes.toFixed(0) +
-                ' B'
-            );
-
-        }
-
-
-        if (
-            bytes < 1024 * 1024
-        ) {
-
-            return (
-                (bytes / 1024)
-                    .toFixed(1) +
-                ' KB'
-            );
-
-        }
-
-
-        if (
-            bytes < 1024 * 1024 * 1024
-        ) {
-
-            return (
-                (bytes / (1024 * 1024))
-                    .toFixed(1) +
-                ' MB'
-            );
-
-        }
-
-
-        return (
-            (bytes / (1024 * 1024 * 1024))
-                .toFixed(2) +
-            ' GB'
-        );
-    }
-
-
-    // ===========================================================
     // F8 종료 후 새 탭 편집창
     // ===========================================================
 
@@ -1876,7 +1732,7 @@ if (
 
                     '</select> ' +
 
-                    '<input id="qCustom" type="number" min="1" max="30" step="1" placeholder="직접입력" style="display:none;width:70px;" value="' +
+                    '<input id="qCustom" type="number" min="1" max="20" step="1" placeholder="직접입력" style="display:none;width:70px;" value="' +
 
                     gifSettings.quality +
 
@@ -2071,6 +1927,19 @@ if (
                     'wSel.addEventListener("change",()=>syncCustom(wSel,wCustom));' +
 
                     'qSel.addEventListener("change",()=>syncCustom(qSel,qCustom));' +
+
+
+                    'qCustom.addEventListener("input",()=>{' +
+
+                    'if(qCustom.value==="")return;' +
+
+                    'const qv=parseInt(qCustom.value,10);' +
+
+                    'if(!isNaN(qv)&&qv>20)qCustom.value="20";' +
+
+                    'if(!isNaN(qv)&&qv<1)qCustom.value="1";' +
+
+                    '});' +
 
 
                     // ------------------------------------------------
@@ -2352,7 +2221,7 @@ if (
 
                     'if(isNaN(targetWidth)||targetWidth<0){alert("가로 크기를 올바르게 입력해주세요.");return;}' +
 
-                    'if(isNaN(quality)||quality<1){alert("화질 값을 올바르게 입력해주세요.");return;}' +
+                    'if(isNaN(quality)||quality<1||quality>20){alert("화질 값은 1~20 사이로 입력해주세요.");return;}' +
 
 
                     // ------------------------------------------------
