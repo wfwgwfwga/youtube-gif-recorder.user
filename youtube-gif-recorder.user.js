@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원.
 // @match        https://www.youtube.com/*
 // @grant        GM_openInTab
@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
     format: 'gif',
     webpLossless: false,
     autoGenerate: false,
+    bitrateMbps: 2,
     keyRecord: 'F9',
     keyScreenshot: 'F10',
     keyGif: 'F8'
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS = {
 const FPS_PRESETS = [10, 15, 20, 25, 30, 40, 60];
 const WIDTH_PRESETS = [640, 720, 960, 1280, 1440, 1600, 1920];
 const QUALITY_PRESETS = [1, 5, 10, 15, 20];
+const BITRATE_PRESETS = [1, 2, 3, 4, 8, 12, 20]; // Mbps, 'auto'는 해상도별 기존 로직 사용
 
 
 // ===============================================================
@@ -84,6 +86,11 @@ function loadSettings() {
 
             autoGenerate:
                 p.autoGenerate === true,
+
+            bitrateMbps:
+                p.bitrateMbps === 'auto' || Number(p.bitrateMbps) > 0
+                    ? (p.bitrateMbps === 'auto' ? 'auto' : Number(p.bitrateMbps))
+                    : DEFAULT_SETTINGS.bitrateMbps,
 
             keyRecord:
                 typeof p.keyRecord === 'string' && p.keyRecord
@@ -190,6 +197,27 @@ function buildFormatOptionsHtml(selected) {
         `<option value="gif"${selected === 'gif' ? ' selected' : ''}>GIF</option>` +
         `<option value="webp"${selected === 'webp' ? ' selected' : ''}>WebP</option>`
     );
+}
+
+
+function buildBitrateOptionsHtml(selected) {
+
+    let html = '';
+
+    html +=
+        `<option value="auto"${selected === 'auto' ? ' selected' : ''}>자동(해상도별)</option>`;
+
+    BITRATE_PRESETS.forEach(v => {
+
+        html +=
+            `<option value="${v}"${v === selected ? ' selected' : ''}>${v} Mbps</option>`;
+
+    });
+
+    html +=
+        `<option value="custom"${(selected !== 'auto' && !BITRATE_PRESETS.includes(selected)) ? ' selected' : ''}>직접 입력</option>`;
+
+    return html;
 }
 
 
@@ -341,6 +369,27 @@ function openSettingsPanel() {
 
         </div>
 
+        <label style="font-size:13px;display:block;margin-bottom:6px;">
+            녹화(F9) 비트레이트
+
+            <select
+                id="yt-gif-setting-bitrate"
+                style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
+            >
+                ${buildBitrateOptionsHtml(gifSettings.bitrateMbps)}
+            </select>
+        </label>
+
+        <input
+            id="yt-gif-setting-bitrate-custom"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Mbps 직접 입력"
+            value="${typeof gifSettings.bitrateMbps === 'number' ? gifSettings.bitrateMbps : 2}"
+            style="display:${(gifSettings.bitrateMbps !== 'auto' && !BITRATE_PRESETS.includes(gifSettings.bitrateMbps)) ? 'block' : 'none'};margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;margin-bottom:16px;"
+        />
+
         <label style="font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
             <input
                 id="yt-gif-setting-auto"
@@ -444,6 +493,32 @@ function openSettingsPanel() {
     formatSelect.addEventListener(
         'change',
         updateSettingsWebpUI
+    );
+
+
+    const bitrateSelect =
+        panel.querySelector(
+            '#yt-gif-setting-bitrate'
+        );
+
+    const bitrateCustomInput =
+        panel.querySelector(
+            '#yt-gif-setting-bitrate-custom'
+        );
+
+
+    function updateBitrateCustomUI() {
+
+        bitrateCustomInput.style.display =
+            bitrateSelect.value === 'custom'
+                ? 'block'
+                : 'none';
+    }
+
+
+    bitrateSelect.addEventListener(
+        'change',
+        updateBitrateCustomUI
     );
 
 
@@ -638,6 +713,32 @@ function openSettingsPanel() {
                     ).checked;
 
 
+                const bitrateMbps =
+                    bitrateSelect.value === 'auto'
+                        ? 'auto'
+                        : (
+                            bitrateSelect.value === 'custom'
+                                ? parseFloat(bitrateCustomInput.value)
+                                : parseFloat(bitrateSelect.value)
+                        );
+
+
+                if (
+                    bitrateMbps !== 'auto' &&
+                    (
+                        isNaN(bitrateMbps) ||
+                        bitrateMbps <= 0
+                    )
+                ) {
+
+                    alert(
+                        '비트레이트를 올바르게 입력해주세요.'
+                    );
+
+                    return;
+                }
+
+
                 if (
                     isNaN(fps) ||
                     fps <= 0
@@ -716,6 +817,7 @@ function openSettingsPanel() {
                     format,
                     webpLossless,
                     autoGenerate,
+                    bitrateMbps,
                     keyRecord,
                     keyScreenshot,
                     keyGif
@@ -995,13 +1097,13 @@ if (
 
         const candidates = [
 
-            'video/mp4;codecs=avc1,mp4a',
-
-            'video/mp4',
-
             'video/webm;codecs=vp9,opus',
 
-            'video/webm'
+            'video/webm',
+
+            'video/mp4;codecs=avc1,mp4a',
+
+            'video/mp4'
 
         ];
 
@@ -1036,6 +1138,14 @@ if (
 
 
     function getBitrateForVideo(video) {
+
+        if (gifSettings.bitrateMbps !== 'auto') {
+
+            return Math.round(
+                gifSettings.bitrateMbps * 1000000
+            );
+        }
+
 
         const h =
             video.videoHeight || 0;
