@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.6
+// @version      1.0.7
 // @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원.
 // @match        https://www.youtube.com/*
 // @grant        GM_openInTab
@@ -1351,7 +1351,7 @@ if (
         try {
 
             captureStream =
-                video.captureStream();
+                video.captureStream(30);
 
         } catch (err) {
 
@@ -1376,6 +1376,25 @@ if (
             return;
         }
 
+        try {
+
+            await captureStream
+                .getVideoTracks()[0]
+                .applyConstraints({
+                    frameRate: {
+                        exact: 30
+                    }
+                });
+
+        } catch (err) {
+
+            alert(
+                '30fps로 고정하는 데 실패했습니다: ' +
+                err.message
+            );
+
+            return;
+        }
 
         const mimeType =
             pickMimeType();
