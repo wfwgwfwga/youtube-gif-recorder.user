@@ -365,7 +365,7 @@ function openSettingsPanel() {
         </div>
 
         <label style="font-size:13px;display:block;margin-bottom:6px;">
-            녹화 비트레이트 <span style="color:#888;font-weight:normal;">(움짤 F8은 항상 원본 화질)</span>
+            녹화 비트레이트 <span style="color:#888;font-weight:normal;">(움짤은 항상 원본 화질)</span>
 
             <select
                 id="yt-gif-setting-bitrate"
