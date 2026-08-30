@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.5
+// @version      1.0.6
 // @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원.
 // @match        https://www.youtube.com/*
 // @grant        GM_openInTab
@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = {
     format: 'gif',
     webpLossless: false,
     autoGenerate: false,
-    bitrateMbps: 2,
+    bitrateMbps: 4,
     keyRecord: 'F9',
     keyScreenshot: 'F10',
     keyGif: 'F8'
@@ -414,7 +414,7 @@ function openSettingsPanel() {
                 min="1"
                 step="1"
                 placeholder="Mbps 직접 입력"
-                value="${typeof gifSettings.bitrateMbps === 'number' ? gifSettings.bitrateMbps : 2}"
+                value="${typeof gifSettings.bitrateMbps === 'number' ? gifSettings.bitrateMbps : 4}"
                 style="display:${(gifSettings.bitrateMbps !== 'auto' && !BITRATE_PRESETS.includes(gifSettings.bitrateMbps)) ? 'block' : 'none'};margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;margin-bottom:16px;"
             />
 
@@ -1097,13 +1097,13 @@ if (
 
         const candidates = [
 
-            'video/webm;codecs=vp9,opus',
-
-            'video/webm',
-
             'video/mp4;codecs=avc1,mp4a',
 
-            'video/mp4'
+            'video/mp4',
+
+            'video/webm;codecs=vp9,opus',
+
+            'video/webm'
 
         ];
 
