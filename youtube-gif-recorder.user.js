@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
-// @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8)
+// @version      1.0.1
+// @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원.
 // @match        https://www.youtube.com/*
 // @grant        GM_openInTab
 // @grant        GM_setValue
@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
     quality: 10,
     format: 'gif',
     webpLossless: false,
+    autoGenerate: false,
     keyRecord: 'F9',
     keyScreenshot: 'F10',
     keyGif: 'F8'
@@ -80,6 +81,9 @@ function loadSettings() {
 
             webpLossless:
                 p.webpLossless === true,
+
+            autoGenerate:
+                p.autoGenerate === true,
 
             keyRecord:
                 typeof p.keyRecord === 'string' && p.keyRecord
@@ -336,6 +340,16 @@ function openSettingsPanel() {
             </label>
 
         </div>
+
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
+            <input
+                id="yt-gif-setting-auto"
+                type="checkbox"
+                ${gifSettings.autoGenerate ? 'checked' : ''}
+                style="width:16px;height:16px;"
+            />
+            자동 생성 (편집창 없이 저장된 설정으로 바로 저장)
+        </label>
 
         <div style="border-top:1px solid #333;margin:4px 0 16px;padding-top:14px;">
 
@@ -618,6 +632,11 @@ function openSettingsPanel() {
                 const keyGif =
                     keyGifInput.value;
 
+                const autoGenerate =
+                    panel.querySelector(
+                        '#yt-gif-setting-auto'
+                    ).checked;
+
 
                 if (
                     isNaN(fps) ||
@@ -696,6 +715,7 @@ function openSettingsPanel() {
                     quality,
                     format,
                     webpLossless,
+                    autoGenerate,
                     keyRecord,
                     keyScreenshot,
                     keyGif
@@ -1514,7 +1534,8 @@ if (
 
                 openGifEditorInNewTab(
                     gifRecordingBlob,
-                    gifVideoTitle
+                    gifVideoTitle,
+                    gifSettings.autoGenerate
                 );
 
             };
@@ -1576,7 +1597,8 @@ if (
 
     function openGifEditorInNewTab(
         blob,
-        videoTitle
+        videoTitle,
+        autoGenerate = false
     ) {
 
         const reader =
@@ -1858,6 +1880,14 @@ if (
 
                     ';' +
 
+                    'const autoGenerate=' +
+
+                    JSON.stringify(!!autoGenerate) +
+
+                    ';' +
+
+                    'if(autoGenerate){document.body.style.display="none";}' +
+
 
                     // ------------------------------------------------
                     // 파일명
@@ -1905,6 +1935,8 @@ if (
                     'document.getElementById("e").value=dur.toFixed(1);' +
 
                     'v.currentTime=0;' +
+
+                    'if(autoGenerate){document.getElementById("save").click();}' +
 
                     '}else{' +
 
@@ -2277,7 +2309,7 @@ if (
                     'const estimated=outW*outH*4*total*1.5;' +
 
 
-                    'if(estimated>=768*1024*1024){' +
+                    'if(estimated>=768*1024*1024&&!autoGenerate){' +
 
                     'if(!confirm("현재 WebP 설정은 매우 무겁습니다.\\n\\n예상 메모리 사용량: "+formatBytes(estimated)+"\\n\\n변환이 실패하거나 브라우저가 느려질 수 있습니다.\\n그래도 진행하시겠습니까?")){' +
 
@@ -2468,6 +2500,8 @@ if (
 
                     'document.getElementById("save").disabled=false;' +
 
+                    'if(autoGenerate){setTimeout(()=>window.close(),1200);}' +
+
 
                     // =================================================
                     // GIF
@@ -2575,6 +2609,8 @@ if (
 
                     'document.getElementById("save").disabled=false;' +
 
+                    'if(autoGenerate){setTimeout(()=>window.close(),1200);}' +
+
                     '});' +
 
 
@@ -2641,7 +2677,7 @@ if (
                 GM_openInTab(
                     blobUrl,
                     {
-                        active: true,
+                        active: !autoGenerate,
                         insert: true,
                         setParent: true
                     }
