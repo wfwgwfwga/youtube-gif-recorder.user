@@ -14,11 +14,6 @@
 // @downloadURL   https://raw.githubusercontent.com/wfwgwfwga/youtube-gif-recorder.user/main/youtube-gif-recorder.user.js
 // ==/UserScript==
 
-
-// ===============================================================
-// 설정
-// ===============================================================
-
 const DEFAULT_SETTINGS = {
     fps: 10,
     width: 480,
@@ -370,7 +365,7 @@ function openSettingsPanel() {
         </div>
 
         <label style="font-size:13px;display:block;margin-bottom:6px;">
-            녹화(F9) 비트레이트
+            녹화(F9) 비트레이트 <span style="color:#888;font-weight:normal;">(움짤 F8은 항상 원본 화질)</span>
 
             <select
                 id="yt-gif-setting-bitrate"
@@ -1137,9 +1132,9 @@ if (
     }
 
 
-    function getBitrateForVideo(video) {
+    function getBitrateForVideo(video, forceAuto = false) {
 
-        if (gifSettings.bitrateMbps !== 'auto') {
+        if (!forceAuto && gifSettings.bitrateMbps !== 'auto') {
 
             return Math.round(
                 gifSettings.bitrateMbps * 1000000
@@ -1606,7 +1601,7 @@ if (
                 {
                     mimeType,
                     videoBitsPerSecond:
-                        getBitrateForVideo(video)
+                        getBitrateForVideo(video, true)
                 }
             );
 
