@@ -14,6 +14,11 @@
 // @downloadURL   https://raw.githubusercontent.com/wfwgwfwga/youtube-gif-recorder.user/main/youtube-gif-recorder.user.js
 // ==/UserScript==
 
+
+// ===============================================================
+// 설정
+// ===============================================================
+
 const DEFAULT_SETTINGS = {
     fps: 10,
     width: 480,
@@ -364,27 +369,6 @@ function openSettingsPanel() {
 
         </div>
 
-        <label style="font-size:13px;display:block;margin-bottom:6px;">
-            녹화 비트레이트 <span style="color:#888;font-weight:normal;">(움짤은 항상 원본 화질)</span>
-
-            <select
-                id="yt-gif-setting-bitrate"
-                style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
-            >
-                ${buildBitrateOptionsHtml(gifSettings.bitrateMbps)}
-            </select>
-        </label>
-
-        <input
-            id="yt-gif-setting-bitrate-custom"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="Mbps 직접 입력"
-            value="${typeof gifSettings.bitrateMbps === 'number' ? gifSettings.bitrateMbps : 2}"
-            style="display:${(gifSettings.bitrateMbps !== 'auto' && !BITRATE_PRESETS.includes(gifSettings.bitrateMbps)) ? 'block' : 'none'};margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;margin-bottom:16px;"
-        />
-
         <label style="font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
             <input
                 id="yt-gif-setting-auto"
@@ -412,6 +396,27 @@ function openSettingsPanel() {
                     style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;cursor:pointer;text-align:center;"
                 />
             </label>
+
+            <label style="font-size:13px;display:block;margin-bottom:6px;">
+                녹화(F9) 비트레이트 <span style="color:#888;font-weight:normal;">(움짤 F8은 항상 원본 화질)</span>
+
+                <select
+                    id="yt-gif-setting-bitrate"
+                    style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
+                >
+                    ${buildBitrateOptionsHtml(gifSettings.bitrateMbps)}
+                </select>
+            </label>
+
+            <input
+                id="yt-gif-setting-bitrate-custom"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Mbps 직접 입력"
+                value="${typeof gifSettings.bitrateMbps === 'number' ? gifSettings.bitrateMbps : 2}"
+                style="display:${(gifSettings.bitrateMbps !== 'auto' && !BITRATE_PRESETS.includes(gifSettings.bitrateMbps)) ? 'block' : 'none'};margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;margin-bottom:16px;"
+            />
 
             <label style="font-size:13px;display:block;margin-bottom:10px;">
                 스크린샷 단축키
