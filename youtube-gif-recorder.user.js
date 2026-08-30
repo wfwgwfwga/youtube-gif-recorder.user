@@ -1015,6 +1015,36 @@ if (
     }
 
 
+    function getBitrateForVideo(video) {
+
+        const h =
+            video.videoHeight || 0;
+
+
+        if (h >= 2160) {
+
+            return 40000000;
+
+        } else if (h >= 1440) {
+
+            return 20000000;
+
+        } else if (h >= 1080) {
+
+            return 12000000;
+
+        } else if (h >= 720) {
+
+            return 8000000;
+
+        } else {
+
+            return 4000000;
+
+        }
+    }
+
+
     // ===========================================================
     // 다운로드
     // ===========================================================
@@ -1246,7 +1276,9 @@ if (
             new MediaRecorder(
                 captureStream,
                 {
-                    mimeType
+                    mimeType,
+                    videoBitsPerSecond:
+                        getBitrateForVideo(video)
                 }
             );
 
@@ -1442,7 +1474,9 @@ if (
             new MediaRecorder(
                 gifCaptureStream,
                 {
-                    mimeType
+                    mimeType,
+                    videoBitsPerSecond:
+                        getBitrateForVideo(video)
                 }
             );
 
