@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.8
-// @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원.
+// @version      1.0.9
+// @description  유튜브 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원. GIF 고화질(gifski) 옵션 지원.
 // @match        https://www.youtube.com/*
 // @grant        GM_openInTab
 // @grant        GM_setValue
@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
     quality: 10,
     format: 'gif',
     webpLossless: false,
+    gifQuality: 'normal', // 'normal' | 'high'(gifski)
     autoGenerate: false,
     bitrateMbps: 4,
     keyRecord: 'F9',
@@ -83,6 +84,11 @@ function loadSettings() {
 
             webpLossless:
                 p.webpLossless === true,
+
+            gifQuality:
+                p.gifQuality === 'high'
+                    ? 'high'
+                    : 'normal',
 
             autoGenerate:
                 p.autoGenerate === true,
@@ -230,6 +236,15 @@ function buildWebpCompressionOptionsHtml(lossless) {
 }
 
 
+function buildGifQualityOptionsHtml(mode) {
+
+    return (
+        `<option value="normal"${mode !== 'high' ? ' selected' : ''}>일반</option>` +
+        `<option value="high"${mode === 'high' ? ' selected' : ''}>고화질 (gifski)</option>`
+    );
+}
+
+
 // ===============================================================
 // Trusted Types
 // ===============================================================
@@ -324,19 +339,26 @@ function openSettingsPanel() {
             />
         </label>
 
-        <label style="font-size:13px;display:block;margin-bottom:16px;">
-            화질(1=최고화질~느림, 20=저화질~빠름)
+        <div
+            id="yt-gif-setting-quality-wrap"
+            style="margin-bottom:16px;"
+        >
 
-            <input
-                id="yt-gif-setting-quality"
-                type="number"
-                min="1"
-                max="20"
-                step="1"
-                value="${gifSettings.quality}"
-                style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
-            />
-        </label>
+            <label style="font-size:13px;display:block;">
+                화질(1=최고화질~느림, 20=저화질~빠름)
+
+                <input
+                    id="yt-gif-setting-quality"
+                    type="number"
+                    min="1"
+                    max="20"
+                    step="1"
+                    value="${gifSettings.quality}"
+                    style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
+                />
+            </label>
+
+        </div>
 
         <label style="font-size:13px;display:block;margin-bottom:16px;">
             기본 저장 형식
@@ -348,6 +370,26 @@ function openSettingsPanel() {
                 ${buildFormatOptionsHtml(gifSettings.format)}
             </select>
         </label>
+
+        <div
+            id="yt-gif-setting-gifquality-wrap"
+            style="display:${gifSettings.format === 'gif' ? 'block' : 'none'};margin-bottom:16px;"
+        >
+
+            <label style="font-size:13px;display:block;">
+
+                GIF 화질 모드
+
+                <select
+                    id="yt-gif-setting-gifquality"
+                    style="display:block;margin-top:4px;width:100%;box-sizing:border-box;background:#111;color:#fff;border:1px solid #444;border-radius:4px;padding:6px;"
+                >
+                    ${buildGifQualityOptionsHtml(gifSettings.gifQuality)}
+                </select>
+
+            </label>
+
+        </div>
 
         <div
             id="yt-gif-setting-webp-wrap"
@@ -480,13 +522,58 @@ function openSettingsPanel() {
             '#yt-gif-setting-webp-wrap'
         );
 
+    const gifQualityWrap =
+        panel.querySelector(
+            '#yt-gif-setting-gifquality-wrap'
+        );
+
+    const qualityWrap =
+        panel.querySelector(
+            '#yt-gif-setting-quality-wrap'
+        );
+
+    const webpSelect =
+        panel.querySelector(
+            '#yt-gif-setting-webp'
+        );
+
+    const gifQualitySelect =
+        panel.querySelector(
+            '#yt-gif-setting-gifquality'
+        );
+
 
     function updateSettingsWebpUI() {
 
+        const isWebp =
+            formatSelect.value === 'webp';
+
+        const isGif =
+            formatSelect.value === 'gif';
+
+        const isWebpLossless =
+            isWebp &&
+            webpSelect.value === 'lossless';
+
+        const isGifHighQuality =
+            isGif &&
+            gifQualitySelect.value === 'high';
+
+
         webpWrap.style.display =
-            formatSelect.value === 'webp'
+            isWebp
                 ? 'block'
                 : 'none';
+
+        gifQualityWrap.style.display =
+            isGif
+                ? 'block'
+                : 'none';
+
+        qualityWrap.style.display =
+            (isWebpLossless || isGifHighQuality)
+                ? 'none'
+                : 'block';
     }
 
 
@@ -494,6 +581,19 @@ function openSettingsPanel() {
         'change',
         updateSettingsWebpUI
     );
+
+    webpSelect.addEventListener(
+        'change',
+        updateSettingsWebpUI
+    );
+
+    gifQualitySelect.addEventListener(
+        'change',
+        updateSettingsWebpUI
+    );
+
+
+    updateSettingsWebpUI();
 
 
     const bitrateSelect =
@@ -698,6 +798,14 @@ function openSettingsPanel() {
                     ).value === 'lossless';
 
 
+                const gifQuality =
+                    panel.querySelector(
+                        '#yt-gif-setting-gifquality'
+                    ).value === 'high'
+                        ? 'high'
+                        : 'normal';
+
+
                 const keyRecord =
                     keyRecordInput.value;
 
@@ -816,6 +924,7 @@ function openSettingsPanel() {
                     quality,
                     format,
                     webpLossless,
+                    gifQuality,
                     autoGenerate,
                     bitrateMbps,
                     keyRecord,
@@ -1937,6 +2046,29 @@ if (
                     '</select> ' +
 
 
+                    '<span id="gifQualityWrap" style="display:' +
+
+                    (
+                        gifSettings.format === 'gif'
+                            ? 'inline'
+                            : 'none'
+                    ) +
+
+                    ';">' +
+
+                    ' GIF 화질 ' +
+
+                    '<select id="gifQualityMode">' +
+
+                    buildGifQualityOptionsHtml(
+                        gifSettings.gifQuality
+                    ) +
+
+                    '</select>' +
+
+                    '</span> ' +
+
+
                     '<span id="webpCompressionWrap" style="display:' +
 
                     (
@@ -2105,6 +2237,10 @@ if (
 
                     'const webpCompression=document.getElementById("webpCompression");' +
 
+                    'const gifQualityWrap=document.getElementById("gifQualityWrap");' +
+
+                    'const gifQualityMode=document.getElementById("gifQualityMode");' +
+
                     'const qualityWrap=document.getElementById("qualityWrap");' +
 
                     'const memoryWarning=document.getElementById("memoryWarning");' +
@@ -2145,11 +2281,17 @@ if (
 
                     'const isWebp=formatSel.value==="webp";' +
 
+                    'const isGif=formatSel.value==="gif";' +
+
                     'const isLossless=webpCompression.value==="lossless";' +
+
+                    'const isGifHighQuality=isGif&&gifQualityMode.value==="high";' +
 
                     'webpCompressionWrap.style.display=isWebp?"inline":"none";' +
 
-                    'qualityWrap.style.display=(!isWebp||!isLossless)?"inline":"none";' +
+                    'gifQualityWrap.style.display=isGif?"inline":"none";' +
+
+                    'qualityWrap.style.display=isGifHighQuality?"none":((!isWebp||!isLossless)?"inline":"none");' +
 
                     'updateMemoryWarning();' +
 
@@ -2159,6 +2301,8 @@ if (
                     'formatSel.addEventListener("change",updateFormatUI);' +
 
                     'webpCompression.addEventListener("change",updateFormatUI);' +
+
+                    'gifQualityMode.addEventListener("change",updateFormatUI);' +
 
 
                     // ------------------------------------------------
@@ -2633,7 +2777,113 @@ if (
 
 
                     // =================================================
-                    // GIF
+                    // GIF - 고화질 (gifski)
+                    // =================================================
+
+                    '}else if(gifQualityMode.value==="high"){' +
+
+
+                    'document.getElementById("lbl").textContent="gifski 라이브러리 로딩 중...";' +
+
+
+                    'const gifskiMod=await import("https://cdn.jsdelivr.net/npm/gifski-wasm/+esm");' +
+
+                    'const gifskiEncode=gifskiMod.default;' +
+
+
+                    'if(typeof gifskiEncode!=="function"){' +
+
+                    'throw new Error("gifski 라이브러리를 불러오지 못했습니다.");' +
+
+                    '}' +
+
+
+                    'const gifskiFrames=[];' +
+
+
+                    'for(let i=0;i<total;i++){' +
+
+
+                    'await seekTo(v,Math.min(start+i/fps,end));' +
+
+
+                    'ctx.drawImage(v,0,0,outW,outH);' +
+
+
+                    'const imageData=ctx.getImageData(0,0,outW,outH);' +
+
+                    'gifskiFrames.push(imageData);' +
+
+
+                    'document.getElementById("lbl").textContent="프레임 추출 중... "+Math.round((i+1)/total*100)+"%";' +
+
+                    'document.getElementById("fill").style.width=Math.round((i+1)/total*50)+"%";' +
+
+
+                    '}' +
+
+
+                    'document.getElementById("lbl").textContent="gifski 인코딩 중... (시간이 걸릴 수 있습니다)";' +
+
+                    'document.getElementById("fill").style.width="75%";' +
+
+
+                    'let gifskiData;' +
+
+
+                    'try{' +
+
+                    'gifskiData=await gifskiEncode({frames:gifskiFrames,width:outW,height:outH,fps:fps,quality:95});' +
+
+                    '}catch(gifskiErr){' +
+
+                    'console.error("gifski encode error:",gifskiErr);' +
+
+                    'throw new Error("gifski 인코딩 중 오류가 발생했습니다. FPS/해상도/구간을 줄여 다시 시도해주세요. ("+(gifskiErr&&gifskiErr.message?gifskiErr.message:gifskiErr)+")");' +
+
+                    '}' +
+
+
+                    'if(!gifskiData){' +
+
+                    'throw new Error("gifski 인코딩 결과가 없습니다.");' +
+
+                    '}' +
+
+
+                    'const gifskiBlob=new Blob([gifskiData],{type:"image/gif"});' +
+
+                    'const gifskiUrl=URL.createObjectURL(gifskiBlob);' +
+
+                    'const gifskiA=document.createElement("a");' +
+
+                    'gifskiA.href=gifskiUrl;' +
+
+                    'gifskiA.download=makeFileName("움짤","gif");' +
+
+                    'document.body.appendChild(gifskiA);' +
+
+                    'gifskiA.click();' +
+
+                    'gifskiA.remove();' +
+
+                    'setTimeout(()=>URL.revokeObjectURL(gifskiUrl),10000);' +
+
+
+                    'gifskiFrames.length=0;' +
+
+
+                    'document.getElementById("fill").style.width="100%";' +
+
+                    'document.getElementById("lbl").textContent="완료! 다운로드 폴더를 확인하세요.";'+
+
+                    'document.getElementById("save").disabled=false;' +
+
+                    'if(autoGenerate){setTimeout(()=>window.close(),1200);}' +
+
+
+                    // =================================================
+                    // GIF - 일반 (gif.js)
                     // =================================================
 
                     '}else{' +
