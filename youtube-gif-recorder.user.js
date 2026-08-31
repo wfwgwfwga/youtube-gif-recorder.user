@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         유튜브/트위치 녹화 · 스크린샷 · 움짤 생성
+// @name         방송 플랫폼 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
 // @version      1.0.10
 // @description  유튜브·트위치 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원. GIF 고화질(gifski) 옵션 지원.
