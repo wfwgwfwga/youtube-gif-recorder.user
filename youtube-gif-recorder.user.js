@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         방송 플랫폼 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.11
+// @version      1.0.12
 // @description  유튜브·트위치·치지직 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원. GIF 고화질(gifski) 옵션 지원.
 // @match        https://www.youtube.com/*
 // @match        https://www.twitch.tv/*
@@ -1421,17 +1421,21 @@ if (typeof GM_registerMenuCommand === 'function') {
                 'video.removeEventListener("seeked",onSeeked);' +
                 'clearTimeout(timer);' +
                 '};' +
-                'const onSeeked=()=>{' +
+                'const finish=()=>{' +
                 'if(done)return;' +
                 'done=true;' +
                 'cleanup();' +
                 'resolve();' +
                 '};' +
+                'const onSeeked=()=>{' +
+                'if(typeof video.requestVideoFrameCallback==="function"){' +
+                'video.requestVideoFrameCallback(()=>finish());' +
+                '}else{' +
+                'requestAnimationFrame(()=>requestAnimationFrame(finish));' +
+                '}' +
+                '};' +
                 'const timer=setTimeout(()=>{' +
-                'if(done)return;' +
-                'done=true;' +
-                'cleanup();' +
-                'resolve();' +
+                'finish();' +
                 '},3000);' +
                 'video.addEventListener("seeked",onSeeked);' +
                 'video.currentTime=t;' +
