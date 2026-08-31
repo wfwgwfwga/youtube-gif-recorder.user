@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         방송 플랫폼 녹화 · 스크린샷 · 움짤 생성
 // @namespace    http://tampermonkey.net/
-// @version      1.0.10
-// @description  유튜브·트위치 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원. GIF 고화질(gifski) 옵션 지원.
+// @version      1.0.11
+// @description  유튜브·트위치·치지직 플레이어 컨트롤바에 녹화/스크린샷/움짤 버튼 추가. 단축키 커스터마이징 가능 (기본값: 녹화 F9, 스크린샷 F10, 움짤 F8). 움짤 자동 생성 옵션 지원. GIF 고화질(gifski) 옵션 지원.
 // @match        https://www.youtube.com/*
 // @match        https://www.twitch.tv/*
+// @match        https://chzzk.naver.com/*
 // @grant        GM_openInTab
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -664,7 +665,7 @@ if (typeof GM_registerMenuCommand === 'function') {
 
         // 위에서 못 찾으면 document.title 사용 (사이트명 접미사 제거)
         if (!title) {
-            title = document.title.replace(/\s*-\s*(YouTube|Twitch)\s*$/i, '').trim();
+            title = document.title.replace(/\s*-\s*(YouTube|Twitch|CHZZK)\s*$/i, '').trim();
         }
 
         if (!title) {
@@ -1844,6 +1845,16 @@ if (typeof GM_registerMenuCommand === 'function') {
                 controls = twitchSettingsBtn.parentElement;
 
                 insertBeforeNode = twitchSettingsBtn;
+            }
+        }
+
+        if (!controls) {
+            const chzzkClipBtn = document.querySelector('.custom__clip-button');
+
+            if (chzzkClipBtn) {
+                controls = chzzkClipBtn.parentElement;
+
+                insertBeforeNode = chzzkClipBtn.nextSibling;
             }
         }
 
